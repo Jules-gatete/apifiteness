@@ -4,7 +4,7 @@ import logging
 import sys
 from typing import Optional
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware  # Added for CORS
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import torch
 from transformers import AutoTokenizer, T5ForConditionalGeneration
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Define the request model for the POST endpoint
 class QuestionRequest(BaseModel):
     question: str
-    prompt_type: Optional[str] = "instruct"  # Optional prompt type, default to 'instruct'
+    prompt_type: Optional[str] = "instruct"
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -28,21 +28,21 @@ app = FastAPI(
 
 # Configure CORS
 origins = [
-    "http://localhost:5173/",  # Vite development server
-    "http://127.0.0.1:5173",  # Alternative for localhost
-    "http://localhost:8000",  # Allow same-origin requests
-    "http://127.0.0.1:8000",  # Allow same-origin requests
-    "http://localhost",       # Allow broad localhost access
-    "http://127.0.0.1",       # Allow broad localhost access
-    "*"                      # Allow all origins (use cautiously in production)
+    "http://localhost:5173/",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost",
+    "http://127.0.0.1",
+    "*"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # List of allowed origins
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],    # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],    # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # FitnessChatbot class
@@ -127,24 +127,17 @@ class FitnessChatbot:
             logger.error(f"Error generating response: {e}")
             return "An error occurred while generating the response. Please try again."
 
-# Initialize the chatbot with the corrected model path
-MODEL_PATH = "C:\\Users\\jules\\Desktop\\apifiteness\\fitness_qa_model_best_model_1"  # Corrected path from screenshot
+# Initialize the chatbot with a relative path
+MODEL_PATH = "./fitness_qa_model_best_model_1"
 try:
     chatbot = FitnessChatbot(MODEL_PATH)
 except Exception as e:
     logger.error(f"Failed to initialize chatbot: {e}")
     sys.exit(1)
 
-# Define the POST endpoint for asking questions
+# POST endpoint for questions
 @app.post("/ask", response_model=dict)
 async def ask_question(request: QuestionRequest):
-    """
-    Endpoint to ask a fitness-related question and get a response from the chatbot.
-    Args:
-        request: JSON payload with 'question' (required) and 'prompt_type' (optional, default='instruct').
-    Returns:
-        dict: Response containing the answer or an error message.
-    """
     try:
         response = chatbot.generate_response(request.question, request.prompt_type)
         return {"answer": response}
@@ -152,14 +145,12 @@ async def ask_question(request: QuestionRequest):
         logger.error(f"Error processing request: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
 
-# Health check endpoint
+# Health check
 @app.get("/health")
 async def health_check():
-    """
-    Endpoint to check if the API is running and the model is loaded.
-    """
     return {"status": "healthy", "model_loaded": chatbot.model is not None}
 
+# Run the app
 if __name__ == "__main__":
-    # Run the FastAPI server with uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info", reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, log_level="info")
